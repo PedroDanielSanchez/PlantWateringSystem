@@ -34,6 +34,7 @@ void waterThePlant();
 void keepAliveMQQT();
 String getAirQuality();
 int readDisplayMoisture();
+void updateOLED();
 void bme280Setup();
 void displaySetup();
 void aqsSetup();
@@ -62,15 +63,6 @@ Adafruit_MQTT_Publish MoistureWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/
 Adafruit_MQTT_Publish DustWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dustPWS");
 // Subscribe feeds
 Adafruit_MQTT_Subscribe ButtonWPS = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/buttonWPS");
-
-struct data
-{
-  int value1;
-  int value2;
-};
-data myData; // data structure
-
-//void myPayload(data myData); 
 
 String DateTime, TimeOnly;
 
@@ -172,7 +164,6 @@ void loop()
       // moist is calculates every 6 seconds, use last value
       // dust is read every 30 seconds, use last value: lowpulseoccupancyLast
       // Publish data to feeds
-      // Publis feeds
       TempWPS.publish(tempF);
       HumidityWPS.publish(humidRH);
       PressureWPS.publish(pressurePas);
@@ -225,18 +216,18 @@ void getDustSensorReadings() {
   Serial.printf("Concentration: %f pcs/L\n", concentration);
 }
 
-    void autoWaterPlant()
-{
-  // Publish to cloud every 6 seconds
 
-  // if ((millis() - lastTime > 6000)) {
+void autoWaterPlant()
+// It also updates the OLED information
+{
   if (checkMoisture.isTimerReady()) {
     moist = readDisplayMoisture();
     if (moist > 2850) {
       waterThePlant();
     }
-    // lastTime = millis();
     checkMoisture.startTimer(6000);
+
+    updateOLED();
   }
 }
 
@@ -283,11 +274,12 @@ String getAirQuality()
 
 int readDisplayMoisture() {
   int moist;
-
   moist = analogRead(MOIST_PIN);  
-
   Serial.printf("Moist Reading = %i   Temp: %0.2f F  Humidity: %0.2f \n", moist, tempF, humidRH);
+  return moist;
+}
 
+void updateOLED() {
   display.setCursor(3, 0);
   display.clearDisplay();
   display.setTextSize(1);
@@ -296,8 +288,9 @@ int readDisplayMoisture() {
   display.printf("Moisture: %i\n", moist);
   display.printf("Temp: %0.2f F\n", tempF);
   display.printf("Humidity: %0.2f \n", humidRH);
+  display.printf("Dust Conc.: %0.2f \n", concentration);
+  display.printf("Air Quality: %s \n", airQuality.c_str());
   display.display();
-  return moist;
 }
 
 void bme280Setup() {

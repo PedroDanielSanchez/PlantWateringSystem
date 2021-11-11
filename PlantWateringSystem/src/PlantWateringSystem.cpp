@@ -59,6 +59,7 @@ Adafruit_MQTT_Publish TempWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feed
 Adafruit_MQTT_Publish HumidityWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/humidityPWS");
 Adafruit_MQTT_Publish PressureWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/pressurePWS");
 Adafruit_MQTT_Publish AirQualityWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/airqualityPWS");
+Adafruit_MQTT_Publish AirQualityValWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/airqualityvalPWS");
 Adafruit_MQTT_Publish MoistureWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/moisturePWS");
 Adafruit_MQTT_Publish DustWPS = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dustPWS");
 // Subscribe feeds
@@ -88,6 +89,7 @@ int moist; // moisture var
 float tempF, humidRH, pressurePas;  // temp and humidity vars
 
 String airQuality;     // airquality string message var
+int airQualityVal;
 
 // Dust vars
 unsigned long lastInterval;
@@ -152,13 +154,13 @@ void loop()
   autoWaterPlant();
   duration = pulseIn(DUST_SENS_PIN, LOW);
   lowpulseoccupancy = lowpulseoccupancy + duration;
+  airQuality = getAirQuality();
   readDustLevel();
 
   if (writeToCloud.isTimerReady()) { // every 14 secs, values are published to the cloud
     tempF = (bme.readTemperature() * (9 / 5.0)) + 32; //deg F
     humidRH = bme.readHumidity();                     // %RH
     pressurePas = bme.readPressure();
-    airQuality = getAirQuality();
     Serial.printlnf("Air Quality is : %s", airQuality.c_str());
     if (mqtt.Update()) {
       // moist is calculates every 6 seconds, use last value
@@ -168,6 +170,7 @@ void loop()
       HumidityWPS.publish(humidRH);
       PressureWPS.publish(pressurePas);
       AirQualityWPS.publish(airQuality);
+      AirQualityValWPS.publish(airQualityVal);
       MoistureWPS.publish(moist);
       DustWPS.publish(concentration);
 
@@ -256,6 +259,9 @@ String getAirQuality()
 {
   int quality = aqSensor.slope();
   String qual = "None";
+
+  airQualityVal = aqSensor.getValue();
+  Serial.printf("Air quality Sensor value: %i\n", airQualityVal);
 
   if (quality == AirQualitySensor::FORCE_SIGNAL) {
     qual = "Danger";
